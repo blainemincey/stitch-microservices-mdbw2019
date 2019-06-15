@@ -24,7 +24,7 @@ def main():
     # if use today's Month and Day as birthday, trigger will fire
     user_document = {
         "name": "Blaine Mincey",
-        "email": "blaine@here.there",
+        "email": "mycoolemail@here.com",
         "password": "securepassword",
         "birthdate": "1971-06-14"
     }
@@ -45,10 +45,12 @@ def main():
 
     print(response.text)
 
+
 ####
 # Constants
 ####
 URL = "<Your Stitch Webhook URL>"
+
 
 ####
 # Main

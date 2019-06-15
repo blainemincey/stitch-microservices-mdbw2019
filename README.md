@@ -361,12 +361,188 @@ As an example, your settings for the POST Webhook should look like this below:
 
 ![](img/postsettings.jpg)  
 
-### Step 6 - Test our POST Webhook
+### Step 6 - Test our POST Webhook  
+We have already tested our API via our GET methods in Step 4 of this tutorial.
+Follow the same method as in Step 4.  You will need to open the *Settings* tab
+of your *postNewUserWebhook*.  Copy the Webhook URL and you are ready to begin
+testing.  Following are high-level instructions on testing with Python3, Postman,
+and cURL.
 
-**Test with Python3**
+**Test with Python3**  
+Open the Python3 file *post_user_birthday.py*.  Towards the bottom of the script
+you will find the Constants for the script.  Find URL and past your Webhook
+URL that you just copied.  After you paste you URL in the variable URL, it should
+look similar to that below:
+```
+####
+# Constants
+####
+URL = "https://webhooks.mongodb-stitch.com/api/client/v2.0/app/microservices-application-pkgif/service/myHttpService/incoming_webhook/postNewUserWebhook"
+```
 
-**Test with Postman**
+If you inspect the Python3 script in the *main* method, you will find the following
+User document that will be inserted into your users collection:
+```
+# sample_mflix.movies has unique index on email
+    # if use today's Month and Day as birthday, trigger will fire
+    user_document = {
+        "name": "Blaine Mincey",
+        "email": "blaine@here.there",
+        "password": "securepassword",
+        "birthdate": "2000-06-14"
+    }
+```
+Feel free to modify the name to something else.  Be sure that the email address
+is unique to the users collection (unique index).  Also, if you set the birthdate
+to today's day, there is an extra credit exercise at the end of this lab!
 
-**Test with cURL**
+Once your modifications have been made, save the script and run it.  You should run it
+with the following command and if successful, the output should be similar as well.
+```
+$ python3 post_user_birthday.py 
+
+============================
+     POST New User          
+============================
+Starting Sat Jun 15 16:44:35 2019
+
+{"_id":{"$oid":"5d0558b3a11ac19ca39921d4"},"name":"Blaine Mincey","email":"mycoolemail@here.com","password":"securepassword","birthdate":{"$date":{"$numberLong":"45705600000"}},"updatedate":{"$date":{"$numberLong":"1560631475471"}}}
+
+Ending Sat Jun 15 16:44:35 2019
+====================================================
+Total Time Elapsed (in seconds): 0.28215846099999997
+====================================================
+
+```
+
+If you inspect the output, you will see that the JSON document returned as added
+an _id field as well as an updatedate.
+
+**Test with Postman**  
+Testing with Postman is incredibly easy as well.  Be sure you have copied the
+Webhook URL for our POST webhook and paste into Postman.  Be sure to select
+POST as the operation.  Then, select the Body tab and select application/json as
+the Body type.  For the body, you could use something similar to this:
+```
+{
+	"name" : "Blaine Mincey",
+	"email" : "anotheremail@there.com",
+	"password" : "securepassword",
+	"birthdate" : "2001-06-13"
+}
+```
+
+Once everything is setup similar to the image below, click the *Send* button.  You
+should receive output similar to what is in the output in the image below.
+
+![](img/postPostman.jpg)  
+
+
+**Test with cURL**  
+Testing with cURL is incredibly simple if you have already have the utility installed.
+Simply copy the cURL example in the Settings tab of the *postNewUserWebhook*.  You
+will need to be sure to modify the JSON document that is sent to match what we
+have used in the previous two examples.  Your curl command should look similar to this
+below.  Notice that the -d argument is expecting the JSON document to insert.  The
+successful output is indicated below as well.
+
+```
+$ curl -H "Content-Type: application/json" -d '{ "name":"My New User", "email":"myNewUserEmail", "password":"mySecurePassword", "birthdate":"2001-06-13"}' https://webhooks.mongodb-stitch.com/api/client/v2.0/app/microservices-application-pkgif/service/myHttpService/incoming_webhook/postNewUserWebhook
+{"_id":{"$oid":"5d055c4792418d4da2dd4cbd"},"name":"My New User","email":"myNewUserEmail","password":"mySecurePassword","birthdate":{"$date":{"$numberLong":"992390400000"}},"updatedate":{"$date":{"$numberLong":"1560632391262"}}}
+```
+
+## Congratulations!
+## You have completed this tutorial!  
+
+**If you feel like continuing on, there is a Step 7 if you so desire.  Should take
+you no more than another 5 minutes to complete.**  
+
 
 ### Step 7 - Extra Credit - Database Trigger
+As part of getting closer to the users of our application, we would like to 
+recognize them on their birthday.  As the marketing department irons out the details
+of what type of recognition the user would receive, the development team has
+decided to go ahead and complete part of the code to make this happen.  Basically,
+when a new user is inserted into our users collection, if their birthday happens
+to be on the day that they create a profile, we want to have immediate notification
+of that.
+
+All it takes is creating a Stitch Database Trigger.
+
+First click the Triggers link in the left-hand navigation and then click the 
+button *Add a Trigger*.  You will want the Trigger Type to be Database Triggers.
+Name the trigger *myBirthdayTrigger*.  Be sure to enable it.  Be sure that the databse
+selected is *sample_mflix* and the collection is *users*.  Then, for operation
+type, click the *Insert* checkbox.  Select to receive the Full Document.  Finally,
+for the function, we will create something new, so select *+ New Function* in the Function
+dropdown.  You can name it *itsYourBirthdayTriggerFunction*.
+Your page should look similar to this below:
+
+![](img/addnewtrigger.jpg)  
+
+If you trigger definition looks similar to that above, click Save.  Now, you will
+have the familiar Function Editor.  Paste the code below into your new function
+definition and click Save.
+
+```
+//
+// Trigger Function fired on insert.  If today is the birthday, celebrate!!
+//
+exports = function(changeEvent) {
+  console.log("Executing itsYourBirthdayTriggerFunction.");
+  
+  if(changeEvent.operationType === 'insert') {
+    console.log("Insert operation.");
+    
+    const { birthdate } = changeEvent.fullDocument;
+    
+    // Grab the month and day today
+    var today = new Date();
+    var monthToday = today.getMonth();
+    var dayToday = today.getDate();
+    
+    // Grab the birth month and birth day
+    var birthMonth = birthdate.getMonth();
+    var birthDay   = birthdate.getDate();
+    
+    // If all things are equal, Birthday!!
+    if(monthToday === birthMonth && dayToday === birthDay){
+      
+      var message = "Time to celebrate!  It's your Birthday!!!";
+      
+      console.log(message);
+      
+      const{name,email} = changeEvent.fullDocument;
+      
+      birthdayNotificationDocument = {
+        name           : name,
+        email          : email,
+        message        : message,
+        notificationTs : new Date()
+      };
+       
+      var collection = context.services.get("mongodb-atlas").db("sample_mflix").collection("birthdayNotifications");
+      
+      collection.insertOne(birthdayNotificationDocument).then(result => {
+        const {insertedId} = result;
+        console.log(`Inserted new notification with _id: ${insertedId}`);
+      })
+    }
+  }
+};
+
+```
+
+In a nutshell, this  function simply looks at the birthday if a newly inserted
+user into the users collection.  If that user's birthday is today (checking the
+month and day), it will create
+a new collection (birthdayNotifications) and insert values there so the user can 
+be notified later.
+
+After saving this function, now POST a new user to your users collection with
+a date of today.  Everything should look the same, except you should now have
+a new collection in your database with a new document.  You can also check
+the Logs of your Stitch application to verify things fired properly and
+to check the function output.
+
+### Now you are finally complete!
