@@ -217,7 +217,7 @@ The Settings screen should look like that below:
 
 ![](img/getwebhooksettings.jpg)  
 
-**Test with Python3**
+**Test with Python3**  
 If you have Python3 installed, you can test with the included Python3 script.  Prior
 to running, be sure you have the requests module installed.  This can be done
 with the following command:
@@ -266,14 +266,14 @@ Total Time Elapsed (in seconds): 0.24088865799999998
 
 ```
 
-**Test with Postman**
+**Test with Postman**  
 If you have installed Postman, you can simply create a new GET request and paste
 the URL.  You will need to be sure and add the query parameter.  Your request in
 Postman should be similar to that below:
 
 ![](img/getpostmanresult.jpg)  
 
-**Test with cURL**
+**Test with cURL**  
 Testing with curl could not be easier if you have it installed.  Simply copy
 the curl command that is given from the Webhook Settings window.  You will
 need to be sure and add the proper query parameter to the end.  Your curl
@@ -292,6 +292,81 @@ $ curl https://webhooks.mongodb-stitch.com/api/client/v2.0/app/microservices-app
 {"_id":{"$oid":"59b99db4cfa9a34dcd7885b6"},"name":"Ned Stark","email":"sean_bean@gameofthron.es","password":"$2b$12$UREFwsRUoyF0CRqGNK0LzO0HM/jLhgUCNNIJ9RJAqMUQ74crlJ1Vu"}
 ```
 
-### Step 5 - POST a new user
+### Step 5 - Create POST Webhook
 Not only will we require the ability to find existing users, we will also want
-to add or POST new users to our users collection.
+to add or POST new users to our users collection.  In order to do this, we will
+need to add an additional Webhook.  Click the Services link in the left-hand
+navigation.  You should see your existing *myHttpService*.  Click on this.  You
+will have a listing of your existing Webhook.  You should see the *getUserByEmailWebhook*
+we created in an earlier step.  It should look like the image below:
+
+![](img/addpostwebhook.jpg)  
+
+Click the *Add Incoming Webhook* button in the upper right-hand corner of the
+UI.  We will name the Webhook *postNewUserWebhook*.  Be sure to toggle the *Respond With Result*
+switch.  The HTTP Method will be POST.  Finally, *Do Not Validate* should be selected.
+Your screen should look like that below.  When it does, click save.
+
+![](img/postnewwebhook.jpg)  
+
+The now familiar Function Editor should open.  We want to copy and paste the code
+block below over the existing code sample.
+```
+//
+exports = async function(payload) {
+  console.log("Executing New User Webhook.");
+  
+  //Accessing a mongodb service:
+  var collection = context.services.get("mongodb-atlas").db("sample_mflix").collection("users");
+    
+  var payloadBody = EJSON.parse(payload.body.text());
+  
+  if(payloadBody) {
+    
+      // create the new user document
+      // email is a unique index so it must be unique
+      var userDocument = {
+        name       : payloadBody.name,
+        email      : payloadBody.email,
+        password   : payloadBody.password,
+        birthdate  : new Date(payloadBody.birthdate),
+        updatedate : new Date()
+      };
+      
+      // insert the new user - use await to make sure it is inserted prior to finding it!
+      await collection.insertOne(userDocument).then(result => {
+        const {insertedId} = result;
+        console.log(`Inserted new user with _id: ${insertedId}`);
+      });
+      
+      // Let's return the complete new user document
+      return await context.functions.execute("getUserByEmailFunction", payloadBody.email);
+  }
+  else {
+    return {"Result" : "Invalid payload body."};
+  }
+      
+};
+
+```
+
+At a high level, the Javascript code takes the payload body and parses out the
+JSON.  Remember, the email address we use must be unique or the database will throw
+an error.  We add an updatedate field as well.  Then, we insert this JSON and
+then return the inserted document using the function we created earlier.
+
+Once this code as been pasted, be sure to Save the function.  Once saved, click
+on the settings tab and we will walk through how to POST data to our database.
+As an example, your settings for the POST Webhook should look like this below:
+
+![](img/postsettings.jpg)  
+
+### Step 6 - Test our POST Webhook
+
+**Test with Python3**
+
+**Test with Postman**
+
+**Test with cURL**
+
+### Step 7 - Extra Credit - Database Trigger

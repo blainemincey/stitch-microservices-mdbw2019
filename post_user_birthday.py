@@ -48,7 +48,7 @@ def main():
 ####
 # Constants
 ####
-URL = "https://webhooks.mongodb-stitch.com/api/client/v2.0/app/microservices-application-pkgif/service/myHttpService/incoming_webhook/postNewUserWebhook"
+URL = "<Your Stitch Webhook URL>"
 
 ####
 # Main
